@@ -1,4 +1,5 @@
 # Avoid Poop Getting Bone 
+introduction : This game is Poop Avoidance Application Game.
 
-how to raise ur score : to get Bone.
-when you die : if you collide with Poop, you die
+- How to raise score : Getting falling Bone.
+- When you die: If you collide with Poop.
