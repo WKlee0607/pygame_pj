@@ -1,4 +1,6 @@
 # pygame_pjs
- pygame projects <br> <br>
- 1. avoid Poop game <br>
+* Introduction : Games made by Pygame. 
+* Game-Lists : 
+ 1. avoid Poop game
  2. Mario Game(Working title)
+ 
