@@ -4,6 +4,8 @@ from pygame.mouse import get_pressed as mouse_btns
 from pygame.mouse import get_pos as mouse_pos
 from settings import *
 
+from menu import Menu
+
 class Editor:
     def __init__(self):
         # main set_up
@@ -18,7 +20,13 @@ class Editor:
         self.support_line_surf = pygame.Surface((WINDOW_WIDTH,WINDOW_HEIGHT)) # 이 surface에다가 lines를 그림(보조 배경 같은 느낌)
         self.support_line_surf.set_colorkey('green') # 해당 surface에서 color_key에 해당하는 색만 지움.
         self.support_line_surf.set_alpha(30) # 0~255의 값 중, 해당 surface의 명도(?) opacity정해주는 것인듯 -> lines grid가 연하게 보이도록 함.
- 
+
+        # selection
+        self.selection_index = 2 # selection_index : settings의 2~18번까지의 수 ,default : 2
+
+        # menu
+        self.menu = Menu()
+
     # input
     def event_loop(self): # editor와 settings에서만 loop를 돌려줄 것임. main제외.
         for event in pygame.event.get():
@@ -26,6 +34,7 @@ class Editor:
                 pygame.quit()
                 sys.exit()
             self.pan_input(event)
+            self.selection_hotkeys(event)
  
     def pan_input(self,event):
         # middle mouse btn pressed / released
@@ -48,6 +57,15 @@ class Editor:
                 self.origin.y -= event.y * 50
             else:
                 self.origin.x -= event.y * 50
+
+    def selection_hotkeys(self,event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RIGHT:
+                self.selection_index += 1
+            if event.key == pygame.K_LEFT:
+                self.selection_index -= 1
+        self.selection_index = max(2, min(self.selection_index , 18)) # selection idx의 범위 2~18로 정해주기
+            
 
     def draw_tile_lines(self): # grid tile lines
         cols = WINDOW_WIDTH//TILE_SIZE # // : 몫만 남기는 operator
@@ -77,3 +95,4 @@ class Editor:
         self.screen.fill("white")
         self.draw_tile_lines()
         pygame.draw.circle(self.screen,'red', self.origin,10)
+        self.menu.display()
