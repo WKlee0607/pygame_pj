@@ -9,8 +9,6 @@ screen_height = 640
 screen = pygame.display.set_mode((screen_width,screen_height))
 images_path = os.path.dirname(__file__) + "/images"
 
-background = pygame.image.load(os.path.join(images_path,"background.jpg"))
-
 pygame.display.set_caption("Avoid Poop Game")
 
 # FPS
@@ -49,7 +47,7 @@ class Btn:
         ))
         screen.blit(self.btnSurface, self.btnRect)
 
-# onclick_fns
+# btn-onclick_fns
 def ext_fn():
     global running
     running = False
@@ -62,9 +60,9 @@ def start_fn():
 def yes_fn():
     global enemy_list, zem_list, to_x, character_x_pos, count, continue_running, gaming
     for enemy in enemy_list:
-        enemy.y_pos = random.randint(-3*screen_height, -2*screen_height)
+        enemy.y_pos = random.randint(-2*screen_height, -screen_height/2)
     for zem in zem_list:
-        zem.y_pos = random.randint(-3*screen_height, -2*screen_height)
+        zem.y_pos = random.randint(-2*screen_height, -screen_height/2)
     to_x = 0
     character_x_pos = (screen_width-character_width)/2
     # 초기화
@@ -88,7 +86,9 @@ character_y_pos = screen_height-character_height
 
 to_x = 0
 
+# speed
 speed = 0.6
+enemy_zem_speed = 0.009
 
 # enemy
 class the_dropped:
@@ -98,7 +98,7 @@ class the_dropped:
         self.width = self.size[0]
         self.height = self.size[1]
         self.x_pos = random.randint(0, screen_width - self.width)
-        self.y_pos = random.randint(-2*screen_height,-screen_height)
+        self.y_pos = random.randint(-2*screen_height,-screen_height/2)
         self.speed = random.random()
         self.a = 0
 
@@ -111,8 +111,9 @@ zem_list = [the_dropped(os.path.join(images_path,"zem.png")) for i in range(zem_
 
 
 # font 
-game_font = pygame.font.Font(None,40)
+game_font = pygame.font.SysFont('arial',40, True)
 count = 0
+title = pygame.font.SysFont('arial',60, 0,0).render('Avoid_Poop', True, (0,0,0))
 
 # loop bool
 running = True
@@ -159,7 +160,7 @@ while running:
 
         # enemy(똥) y_pos바꾸기 & 충돌처리
         for enemy in enemy_list:
-            enemy.a += 0.001
+            enemy.a += enemy_zem_speed
             enemy.y_pos += (enemy.speed+ enemy.a) * dt 
             enemy_rect = enemy.e.get_rect()
             enemy_rect.left = enemy.x_pos
@@ -179,7 +180,7 @@ while running:
         # zem y_pos바꾸기 & 충돌처리
         for zem in zem_list:
             # zem y_pos바꾸기
-            zem.a += 0.001
+            zem.a += enemy_zem_speed
             zem.y_pos += (zem.speed+ zem.a) * dt 
             if zem.y_pos > screen_height:
                 zem.a = 0
@@ -195,8 +196,8 @@ while running:
                 count += 1
     
     # 그리기   
-    screen.blit(background,(0,0))
-    
+    screen.fill('white')
+
     if gaming:
         screen.blit(character,(character_x_pos,character_y_pos))
         screen.blit(game_font.render("score:" + str(count),True,(0,0,0)), (10,10)) # score 그리기
@@ -210,10 +211,11 @@ while running:
         score = game_font.render("score:" + str(count),True,(0,0,0))
         yes.process()
         ext.process()
-        screen.blit(score, ((screen_width-score.get_rect().size[0])/2,screen_height/5)) # score 그리기
+        screen.blit(score, ((screen_width-score.get_rect().size[0])/2,screen_height/6)) # score 그리기
     
     if start_y:
         # start 그리기
+        screen.blit(title,((screen_width-title.get_rect().width)/2, screen_height/7))
         start.process()
         ext.process()
     
