@@ -2,7 +2,6 @@ import os
 import pygame
 import random
 
-
 pygame.init()
 
 screen_width = 480
@@ -14,35 +13,70 @@ background = pygame.image.load(os.path.join(images_path,"background.jpg"))
 
 pygame.display.set_caption("Avoid Poop Game")
 
-
-# Yes, No, Start
-yes = pygame.image.load(os.path.join(images_path,"continue.png"))
-yes_size = yes.get_rect().size
-yes_width = yes_size[0]
-yes_height = yes_size[1]
-yes_rect = yes.get_rect()
-yes_rect.left = (screen_width-yes_width)/2
-yes_rect.top = (screen_height-yes_height)/3
-
-no = pygame.image.load(os.path.join(images_path,"exit.png"))
-no_size = no.get_rect().size
-no_width = no_size[0]
-no_height = no_size[1]
-no_rect = no.get_rect()
-no_rect.left = (screen_width-no_width)/2
-no_rect.top = 2*(screen_height-no_height)/3
-
-start = pygame.image.load(os.path.join(images_path,"start.png"))
-start_size = start.get_rect().size
-start_width = start_size[0]
-start_height = start_size[1]
-start_rect = start.get_rect()
-start_rect.left = (screen_width-start_width)/2
-start_rect.top = (screen_height-start_height)/2
-
-
 # FPS
 clock = pygame.time.Clock()
+
+# btn class
+class Btn: 
+    def __init__(self,x,y,width,height,txt, onclick_fn):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.txt = txt
+        self.onclick_fn = onclick_fn
+        self.fill_color = {
+            'normal': (255,250,200),
+            'hover' : '#666666',
+            'pressed' : '#333333'
+        }
+        self.btnSurface = pygame.Surface((self.width,self.height))
+        self.btnRect = pygame.Rect(self.x, self.y, self.width, self.height)
+        self.btnSurf = pygame.font.Font(None,40).render(self.txt, True, (20,20,20))
+
+    def process(self):
+        mousePos = pygame.mouse.get_pos()
+        self.btnSurface.fill(self.fill_color['normal'])
+        if self.btnRect.collidepoint(mousePos): # hover
+            self.btnSurface.fill(self.fill_color['hover'])
+            if pygame.mouse.get_pressed(num_buttons=3)[0]: # pressed
+                self.btnSurface.fill(self.fill_color['pressed'])
+                self.onclick_fn()
+        
+        self.btnSurface.blit(self.btnSurf, (
+            self.btnRect.width/2 - self.btnSurf.get_rect().width/2,
+            self.btnRect.height/2 - self.btnSurf.get_rect().height/2
+        ))
+        screen.blit(self.btnSurface, self.btnRect)
+
+# onclick_fns
+def ext_fn():
+    global running
+    running = False
+
+def start_fn():
+    global start_y, gaming
+    start_y = False
+    gaming = True
+
+def yes_fn():
+    global enemy_list, zem_list, to_x, character_x_pos, count, continue_running, gaming
+    for enemy in enemy_list:
+        enemy.y_pos = random.randint(-3*screen_height, -2*screen_height)
+    for zem in zem_list:
+        zem.y_pos = random.randint(-3*screen_height, -2*screen_height)
+    to_x = 0
+    character_x_pos = (screen_width-character_width)/2
+    # 초기화
+    count = 0
+    continue_running = False
+    gaming = True
+    
+# btn objects
+start = Btn((screen_width-400)/2,(screen_height-100)/3,400,100,'Start',start_fn)
+ext = Btn((screen_width-400)/2,2*(screen_height-100)/3,400,100,'Exit', ext_fn)
+yes = Btn((screen_width-400)/2,(screen_height-100)/3,400,100,'Continue',yes_fn)
+
 
 # character 
 character = pygame.image.load(os.path.join(images_path,"dog.png"))
@@ -105,38 +139,6 @@ while running:
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
                 to_x = 0
-        # MouseBtnClick - MouseBtnDown
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            # continue일 때,
-            if continue_running:
-                # continue 버튼 눌렀을 때
-                if yes_rect.collidepoint(pygame.mouse.get_pos()) and event.button == 1:
-                    print("Continue")
-                    # enemy 초기화
-                    for enemy in enemy_list:
-                        enemy.y_pos = random.randint(-3*screen_height, -2*screen_height)
-                    # zem 초기화
-                    for zem in zem_list:
-                        zem.y_pos = random.randint(-3*screen_height, -2*screen_height)
-                    # character 초기화
-                    to_x = 0
-                    character_x_pos = (screen_width-character_width)/2
-                    # 초기화
-                    count = 0
-                    continue_running = False
-                    gaming = True
-
-                # 나가기 버튼 눌렀을 때
-                if no_rect.collidepoint(pygame.mouse.get_pos()) and event.button == 1:
-                    print("Exit")
-                    running = False
-            if start_y:
-                # start 여부
-                if start_rect.collidepoint(pygame.mouse.get_pos()) and event.button == 1:
-                    # start 버튼 눌렀을 때
-                    print("Start")
-                    start_y = False
-                    gaming = True
 
     # gaming 일 때  처리
     if gaming:
@@ -206,13 +208,14 @@ while running:
     if continue_running:
         # continue_running 그리기
         score = game_font.render("score:" + str(count),True,(0,0,0))
-        screen.blit(yes,(yes_rect.left,yes_rect.top))
-        screen.blit(no,(no_rect.left,no_rect.top))
+        yes.process()
+        ext.process()
         screen.blit(score, ((screen_width-score.get_rect().size[0])/2,screen_height/5)) # score 그리기
     
     if start_y:
         # start 그리기
-        screen.blit(start,(start_rect.left,start_rect.top))
+        start.process()
+        ext.process()
     
     pygame.display.update()        
 
