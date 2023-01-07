@@ -36,7 +36,7 @@ class Editor:
         self.menu = Menu()
 
     # support
-    def get_current_cell(self):
+    def  get_current_cell(self):
         distance_to_origin = vector(mouse_pos()) - self.origin
         
         if distance_to_origin.x > 0:
@@ -80,7 +80,7 @@ class Editor:
                             self.canvas_data[cell].terrain_neighbors.append(name) # 어차피 그림은 terrain_neighbors를 참조하여 draw level에서 그려짐. 추가만 하면됨.
                             # neighbors에도 terrain_neighbors 리스트 추가해야 되는 거 아닌가? -> 아, 어차피 neighbors 바로 옆에 블럭 그리면 그 블럭도 이 함수에 의해 업데이트 됨.
 
-    def imprt(self):
+    def imprt(self): 
         self.water_bottom = load(os.path.join(GRAPHICS_PATH, 'terrain/water/water_bottom.png'))
 
         # animations
@@ -203,15 +203,19 @@ class Editor:
 
             # coins 
             if tile.coin:
-                test_surf = pygame.Surface((TILE_SIZE,TILE_SIZE))
-                test_surf.fill("yellow")
-                self.screen.blit(test_surf, pos)
+                frames = self.animations[tile.coin]['frames']
+                index = int(self.animations[tile.coin]['frame index'])
+                surf = frames[index]
+                rect = surf.get_rect(center = (pos.x + (TILE_SIZE)//2, pos.y + (TILE_SIZE)//2))
+                self.screen.blit(surf, rect)
 
             # enemies
             if tile.enemy:
-                test_surf = pygame.Surface((TILE_SIZE,TILE_SIZE))
-                test_surf.fill("black")
-                self.screen.blit(test_surf, pos)
+                frames = self.animations[tile.enemy]['frames']
+                index = int(self.animations[tile.enemy]['frame index'])
+                surf = frames[index]
+                rect = surf.get_rect(midbottom = (pos.x + TILE_SIZE//2, pos.y + TILE_SIZE))
+                self.screen.blit(surf, rect)
 
     # update
     def run(self,dt):
