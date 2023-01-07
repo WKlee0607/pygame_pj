@@ -41,15 +41,30 @@ class Menu:
         Button(self.enemy_button_rect, self.buttons, self.menu_surfs['enemy'])
         Button(self.palm_button_rect, self.buttons, self.menu_surfs['palm fg'], self.menu_surfs['palm bg'])
 
-    def display(self):
-        #pygame.draw.rect(self.display_surface, 'red', self.rect) # background, color, painting rect
-        #pygame.draw.rect(self.display_surface, 'green', self.tile_button_rect)
-        #pygame.draw.rect(self.display_surface, 'blue', self.coin_button_rect)
-        #pygame.draw.rect(self.display_surface, 'yellow', self.palm_button_rect)
-        #pygame.draw.rect(self.display_surface, 'beige', self.enemy_button_rect)
-        
+    def click(self, mouse_pos, mouse_button): # 마우스 위치랑 pressed 유형 넘겨줌.
+        for sprite in self.buttons:
+            if sprite.rect.collidepoint(mouse_pos):
+                if mouse_button[1]: # middle mouse click
+                    if sprite.items['alt']:
+                        sprite.main_active = not sprite.main_active  # 'alt'가 있는 아이템은 alt_item으로 변환
+                if mouse_button[2]: # right click
+                    sprite.switch()
+                return sprite.get_id()
+
+    def highlight_indicator(self, index):
+        if EDITOR_DATA[index]['menu'] == 'terrain':
+            pygame.draw.rect(self.display_surface, '#f5f1de',self.tile_button_rect.inflate(4,4),5,4)
+        if EDITOR_DATA[index]['menu'] == 'coin':
+            pygame.draw.rect(self.display_surface, '#f5f1de',self.coin_button_rect.inflate(4,4),5,4)
+        if EDITOR_DATA[index]['menu'] == 'enemy':
+            pygame.draw.rect(self.display_surface, '#f5f1de',self.enemy_button_rect.inflate(4,4),5,4)
+        if EDITOR_DATA[index]['menu'] in ('palm bg', 'palm fg'):
+            pygame.draw.rect(self.display_surface, '#f5f1de',self.palm_button_rect.inflate(4,4),5,4)
+
+    def display(self, index):
         self.buttons.update()
         self.buttons.draw(self.display_surface)
+        self.highlight_indicator(index)
 
 class Button(pygame.sprite.Sprite):
     def __init__(self, rect, group, items, items_alt = None):
@@ -61,11 +76,18 @@ class Button(pygame.sprite.Sprite):
         self.items = {'main': items, 'alt': items_alt} # arg items는 list형식
         self.index = 0
         self.main_active = True
+        # print(self.rect.center) -> (1138, 578)
+        # print(self.rect.width, self.rect.height) -> 85, 85
     
-    def updaate(self): # self.buttons = pygame.sprite.Group() 여기에 
+    def get_id(self):
+        return self.items['main' if self.main_active else 'alt'][self.index][0]
+
+    def switch(self):
+        self.index += 1
+        self.index = 0 if self.index >= len(self.items['main' if self.main_active else 'alt']) else self.index
+
+    def update(self): # self.buttons = pygame.sprite.Group() 여기에 
         self.image.fill('#33323d') # 메뉴 한 칸 배경 칠하기
-        surf = self.items['main']#[self.index][1] # pygame.img 형식
-        print(surf)
-        
-        #rect = surf.get_rect(center = (self.rect.width/2, self.rect.height/2)) # surf(img)의 rect가져오기
-        #self.image.blit(surf, rect) # 배경 이미지에 item img넣기
+        surf = self.items['main' if self.main_active else 'alt'][self.index][1] # pygame.img 형식
+        rect = surf.get_rect(center = (self.rect.width/2, self.rect.height/2)) # surf(img)의 rect가져오기 // self.rect.center는 전체 화면 이미지에 대한 center값이 출력. 하지만 item img는 self.rect기준이므로 self.width & self.height로 구함.
+        self.image.blit(surf, rect) # 배경 이미지에 item img넣기

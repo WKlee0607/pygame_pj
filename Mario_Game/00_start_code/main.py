@@ -1,12 +1,13 @@
 import pygame
 import os
 from settings import *
+from support import *
 
 from pygame.image import load
 
 from editor import Editor
 
-graphics_path = os.path.abspath(path="graphics")
+
 
 class Main:
     def __init__(self):
@@ -14,13 +15,17 @@ class Main:
         pygame.init()
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
+        self.imports()
 
-        self.editor = Editor()
+        self.editor = Editor(self.land_tiles)
 
         # cursor // 1. cursor이미지 불러오기 2. cursor 설정(clickable area, img) 3. pygame cursor설정
-        surf = load(os.path.join(graphics_path,"cursors/mouse.png")).convert_alpha() # convert_alpha : 이미지 로드 후, 픽셀당 투명도를 갖게 만듦.
+        surf = load(os.path.join(GRAPHICS_PATH,"cursors/mouse.png")).convert_alpha() # convert_alpha : 이미지 로드 후, 픽셀당 투명도를 갖게 만듦.
         cursor = pygame.cursors.Cursor((0,0), surf) # clickable area: cursor의 왼쪽 상단 끝 , mouse surf 
         pygame.mouse.set_cursor(cursor)
+
+    def imports(self):
+        self.land_tiles = import_folder_dict(os.path.join(GRAPHICS_PATH,"terrain/land")) # surface list return받음 -> 모든 land이미지에 대한 img_surf
 
     def run(self):
         while True:

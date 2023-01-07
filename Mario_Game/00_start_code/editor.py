@@ -2,14 +2,21 @@ import pygame, sys
 from pygame.math import Vector2 as vector
 from pygame.mouse import get_pressed as mouse_btns
 from pygame.mouse import get_pos as mouse_pos
+from pygame.image import load
 from settings import *
 
+from support import *
 from menu import Menu
 
 class Editor:
-    def __init__(self):
+    def __init__(self, land_tiles):
         # main set_up
         self.screen = pygame.display.get_surface() # Get a reference to the currently set display surface(현재 설정된 화면 표시면에 대한 참조 가져오기)
+        self.canvas_data = {}
+
+        # imports 
+        self.land_tiles = land_tiles # dict or list형식
+        self.imprt()
 
         # navigation
         self.origin = vector() # 2D Vector (2차원 벡터)
@@ -23,9 +30,76 @@ class Editor:
 
         # selection
         self.selection_index = 2 # selection_index : settings의 2~18번까지의 수 ,default : 2
+        self.last_selected_cell = None
 
         # menu
         self.menu = Menu()
+
+    # support
+    def get_current_cell(self):
+        distance_to_origin = vector(mouse_pos()) - self.origin
+        
+        if distance_to_origin.x > 0:
+            col = int(distance_to_origin.x/TILE_SIZE)
+        else:
+            col = int(distance_to_origin.x/TILE_SIZE) - 1
+
+        if distance_to_origin.y > 0:
+            row = int(distance_to_origin.y/TILE_SIZE)
+        else:
+            row = int(distance_to_origin.y/TILE_SIZE) - 1
+
+        return col, row
+
+    def check_neighbors(self, cell_pos):
+
+        # create a local cluster
+        cluster_size = 3
+        local_cluster = [(cell_pos[0] + col - int(cluster_size/2), cell_pos[1] + row - int(cluster_size/2))
+            for col in range(cluster_size) 
+            for row in range(cluster_size)
+        ]
+
+        # check_neighbors
+        for cell in local_cluster:
+            if cell in self.canvas_data:
+                self.canvas_data[cell].terrain_neighbors = [] # 한 개 설치할 때마다 업데이트.
+                self.canvas_data[cell].water_on_top = False
+                for name, side in NEIGHBOR_DIRECTIONS.items():
+                    neighbor_cell = (cell[0] + side[0], cell[1] + side[1]) # local cluster(설치 블럭 포함, 중심 9개 블럭)에 대한 주변 블럭 체크 후 추가. -> 총 16개 블럭에 대한 조사를 하는 것임.
+
+                    if neighbor_cell in self.canvas_data:
+                    # water top neighbor -> water on top
+                    # water in the current tile
+                    # and another water tile on top
+                        if self.canvas_data[neighbor_cell].has_water and self.canvas_data[cell].has_water and name == 'A': # cell이 물 type이면서 neighbor water가 A위치(cell 바로 위)에 위치할 경우
+                            self.canvas_data[cell].water_on_top = True
+
+                    # terrain neighbors 
+                        if self.canvas_data[neighbor_cell].has_terrain: # 그 주위 블럭이 has_terrain일 경우.
+                            self.canvas_data[cell].terrain_neighbors.append(name) # 어차피 그림은 terrain_neighbors를 참조하여 draw level에서 그려짐. 추가만 하면됨.
+                            # neighbors에도 terrain_neighbors 리스트 추가해야 되는 거 아닌가? -> 아, 어차피 neighbors 바로 옆에 블럭 그리면 그 블럭도 이 함수에 의해 업데이트 됨.
+
+    def imprt(self):
+        self.water_bottom = load(os.path.join(GRAPHICS_PATH, 'terrain/water/water_bottom.png'))
+
+        # animations
+        self.animations = {3 : {'frame index' : 0, 'frames' : ['surfaces'], 'length': 3}}
+        for key, value in EDITOR_DATA.items():
+            if value['graphics']:
+                graphics = import_folder(value['graphics'])
+                self.animations[key] = {
+                    'frame index' : 0,
+                    'frames' : graphics, # 사진들 총 집함. list형식
+                    'length' : len(graphics)
+                }
+        print(self.animations)
+
+    def animation_update(self, dt):
+        for value in self.animations.values():
+            value['frame index'] += ANIMATION_SPEED * dt # 0.2, 0.4, ... 실수 형태임
+            if value['frame index'] >= value['length']:
+                value['frame index'] = 0
 
     # input
     def event_loop(self): # editor와 settings에서만 loop를 돌려줄 것임. main제외.
@@ -35,6 +109,8 @@ class Editor:
                 sys.exit()
             self.pan_input(event)
             self.selection_hotkeys(event)
+            self.menu_click(event)
+            self.canvas_add()
  
     def pan_input(self,event):
         # middle mouse btn pressed / released
@@ -65,8 +141,26 @@ class Editor:
             if event.key == pygame.K_LEFT:
                 self.selection_index -= 1
         self.selection_index = max(2, min(self.selection_index , 18)) # selection idx의 범위 2~18로 정해주기
-            
 
+    def menu_click(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and self.menu.rect.collidepoint(mouse_pos()):
+            self.selection_index = self.menu.click(mouse_pos(), mouse_btns()) # 위치랑 누른 유형 넘겨줌.
+
+    def canvas_add(self):
+        # pressed Left
+        if mouse_btns()[0] and not self.menu.rect.collidepoint(mouse_pos()):
+            current_cell = self.get_current_cell() # return col_idx, row_idx 
+            
+            if current_cell != self.last_selected_cell:
+
+                if current_cell in self.canvas_data:
+                    self.canvas_data[current_cell].add_id(self.selection_index) # 이건 이후에 블럭 삭제할 때 쓰일 듯?
+                else:
+                    self.canvas_data[current_cell] = CanvasTile(self.selection_index) # canvas_data에 없으면 추가해줌.
+                self.check_neighbors(current_cell)
+                self.last_selected_cell = current_cell
+
+    # drawing
     def draw_tile_lines(self): # grid tile lines
         cols = WINDOW_WIDTH//TILE_SIZE # // : 몫만 남기는 operator
         rows = WINDOW_HEIGHT//TILE_SIZE
@@ -88,11 +182,77 @@ class Editor:
 
         self.screen.blit(self.support_line_surf,(0,0))
 
-    def run(self,df):
+    def draw_level(self):
+        for cell_pos, tile in self.canvas_data.items():
+            pos = self.origin + vector(cell_pos) * TILE_SIZE
+            
+            # water
+            if tile.has_water:
+                if tile.water_on_top:
+                    self.screen.blit(self.water_bottom, pos)
+                else:
+                    frames = self.animations[3]['frames'] # animation
+                    index = int(self.animations[3]['frame index'])
+                    surf = frames[index]
+                    self.screen.blit(surf, pos)
+
+            if tile.has_terrain:
+                terrain_string = ''.join(tile.terrain_neighbors)
+                terrain_style = terrain_string if terrain_string in self.land_tiles else 'X'
+                self.screen.blit(self.land_tiles[terrain_style], pos)
+
+            # coins 
+            if tile.coin:
+                test_surf = pygame.Surface((TILE_SIZE,TILE_SIZE))
+                test_surf.fill("yellow")
+                self.screen.blit(test_surf, pos)
+
+            # enemies
+            if tile.enemy:
+                test_surf = pygame.Surface((TILE_SIZE,TILE_SIZE))
+                test_surf.fill("black")
+                self.screen.blit(test_surf, pos)
+
+    # update
+    def run(self,dt):
         self.event_loop()
 
+        # updating
+        self.animation_update(dt)
+
         # drawing
-        self.screen.fill("white")
+        self.screen.fill("gray")
         self.draw_tile_lines()
+        self.draw_level()
         pygame.draw.circle(self.screen,'red', self.origin,10)
-        self.menu.display()
+        self.menu.display(self.selection_index)
+        
+class CanvasTile:
+    def __init__(self, tile_id):
+        
+        # terrain
+        self.has_terrain = False
+        self.terrain_neighbors = [] # 지형 주변을 알아내어 모양을 정해주려고
+
+        # water
+        self.has_water = False
+        self.water_on_top = False
+
+        # coin
+        self.coin = None # 4,5,6
+
+        # enemy 
+        self.enemy = None
+
+        # objects 
+        self.objects = []
+
+        self.add_id(tile_id)
+
+    def add_id(self, tile_id):
+        options = {key : value['style'] for key, value in EDITOR_DATA.items()} # key = self.selection_index , value = coin 등
+        match options [tile_id]:
+            case 'terrain': self.has_terrain = True
+            case 'water' : self.has_water = True
+            case 'coin' : self.coin = tile_id
+            case 'enemy' : self.enemy = tile_id
