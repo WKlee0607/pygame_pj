@@ -7,6 +7,7 @@ from settings import *
 
 from support import *
 from menu import Menu
+from timer import Timer
 
 class Editor:
     def __init__(self, land_tiles):
@@ -38,6 +39,7 @@ class Editor:
         # objects
         self.canvas_objects = pygame.sprite.Group()
         self.object_drag_active = False
+        self.object_timer = Timer(400)
 
         # Player
         CanvasObject(
@@ -59,7 +61,7 @@ class Editor:
         )
 
     # support
-    def  get_current_cell(self):
+    def get_current_cell(self):
         distance_to_origin = vector(mouse_pos()) - self.origin
         
         if distance_to_origin.x > 0:
@@ -124,6 +126,11 @@ class Editor:
             value['frame index'] += ANIMATION_SPEED * dt # 0.2, 0.4, ... 실수 형태임
             if value['frame index'] >= value['length']:
                 value['frame index'] = 0
+
+    def mouse_on_object(self):
+        for sprite in self.canvas_objects:
+            if sprite.rect.collidepoint(mouse_pos()):
+                return sprite
 
     # input
     def event_loop(self): # editor와 settings에서만 loop를 돌려줄 것임. main제외.
@@ -193,18 +200,28 @@ class Editor:
                     self.check_neighbors(current_cell)
                     self.last_selected_cell = current_cell
             else: # object -> type: object인 것들은 canvas에 그릴 때, CanvasObject 객체로 그려줘서 위치를 이동시킬 수 있음.
-                CanvasObject(
-                    pos = mouse_pos(),
-                    frames = self.animations[self.selection_index]['frames'],
-                    tile_id = self.selection_index,
-                    origin = self.origin,
-                    group = self.canvas_objects
-                )
+                if not self.object_timer.active:
+                    CanvasObject(
+                        pos = mouse_pos(),
+                        frames = self.animations[self.selection_index]['frames'],
+                        tile_id = self.selection_index,
+                        origin = self.origin,
+                        group = self.canvas_objects
+                    )
+                    self.object_timer.activate() # 0.4초 딜레이
 
 
     def canvas_remove(self):
         if mouse_btns()[2] and not self.menu.rect.collidepoint(mouse_pos()):
+            
+            # delete object
+            selected_object = self.mouse_on_object() # sprite(object) return
+            if selected_object:
+                if EDITOR_DATA[selected_object.tile_id]['style'] not in ('player', 'sky'):
+                    selected_object.kill() # sprite(pygame Sprite객체)
 
+
+            # delete tiles
             if self.canvas_data:
                 current_cell = self.get_current_cell()
                 if current_cell in self.canvas_data:
@@ -293,6 +310,7 @@ class Editor:
         # updating
         self.animation_update(dt)
         self.canvas_objects.update(dt) # sprite.Group에서 함수 실행해주면 Group안에 있는 각각의 sprite에 대하여 동일한 함수 실행
+        self.object_timer.update()
 
         # drawing
         self.screen.fill("gray")
