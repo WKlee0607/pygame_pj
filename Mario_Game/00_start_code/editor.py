@@ -35,6 +35,29 @@ class Editor:
         # menu
         self.menu = Menu()
 
+        # objects
+        self.canvas_objects = pygame.sprite.Group()
+        self.object_drag_active = False
+
+        # Player
+        CanvasObject(
+            pos = (200, WINDOW_HEIGHT/2), 
+            frames = self.animations[0]['frames'], 
+            tile_id = 0, 
+            origin = self.origin, 
+            group = self.canvas_objects
+        )
+
+        # sky
+        # pos = middle of window
+        self.sky_handle = CanvasObject(
+            pos = (WINDOW_WIDTH/2, WINDOW_HEIGHT/2),
+            frames = [self.sky_handle_surf],
+            tile_id= 1,
+            origin=self.origin,
+            group=self.canvas_objects
+        )
+
     # support
     def  get_current_cell(self):
         distance_to_origin = vector(mouse_pos()) - self.origin
@@ -81,7 +104,8 @@ class Editor:
                             # neighbors에도 terrain_neighbors 리스트 추가해야 되는 거 아닌가? -> 아, 어차피 neighbors 바로 옆에 블럭 그리면 그 블럭도 이 함수에 의해 업데이트 됨.
 
     def imprt(self): 
-        self.water_bottom = load(os.path.join(GRAPHICS_PATH, 'terrain/water/water_bottom.png'))
+        self.water_bottom = load(os.path.join(GRAPHICS_PATH, 'terrain/water/water_bottom.png')).convert_alpha()
+        self.sky_handle_surf = load(os.path.join(GRAPHICS_PATH, 'cursors/handle.png')).convert_alpha()
 
         # animations
         self.animations = {3 : {'frame index' : 0, 'frames' : ['surfaces'], 'length': 3}}
@@ -112,6 +136,8 @@ class Editor:
             self.selection_hotkeys(event)
             self.menu_click(event)
             
+            self.object_drag(event)
+
             self.canvas_add()
             self.canvas_remove()
  
@@ -128,6 +154,9 @@ class Editor:
         # panning update
         if self.pan_active:
             self.origin = vector(mouse_pos()) - self.pan_offset # 현재 마우스 위치에서, MouseBtnDown했을 때의 마우스와 pan의 거리(정확히는 벡터 차이만큼) 차이만큼을 유지하며 pan이 이동함. -> pan이 한 번에 점프하는 걸 방지
+
+            for sprite in self.canvas_objects:
+                sprite.pan_pos(self.origin)
 
         # mouse_wheel
         if event.type == pygame.MOUSEWHEEL:
@@ -151,17 +180,27 @@ class Editor:
 
     def canvas_add(self):
         # pressed Left
-        if mouse_btns()[0] and not self.menu.rect.collidepoint(mouse_pos()):
+        if mouse_btns()[0] and not self.menu.rect.collidepoint(mouse_pos()) and not self.object_drag_active:
             current_cell = self.get_current_cell() # return col_idx, row_idx 
+            if EDITOR_DATA[self.selection_index]['type'] == 'tile':
             
-            if current_cell != self.last_selected_cell:
+                if current_cell != self.last_selected_cell:
 
-                if current_cell in self.canvas_data:
-                    self.canvas_data[current_cell].add_id(self.selection_index) # 이건 이후에 블럭 삭제할 때 쓰일 듯?
-                else:
-                    self.canvas_data[current_cell] = CanvasTile(self.selection_index) # canvas_data에 없으면 추가해줌.
-                self.check_neighbors(current_cell)
-                self.last_selected_cell = current_cell
+                    if current_cell in self.canvas_data:
+                        self.canvas_data[current_cell].add_id(self.selection_index) # 이건 이후에 블럭 삭제할 때 쓰일 듯?
+                    else:
+                        self.canvas_data[current_cell] = CanvasTile(self.selection_index) # canvas_data에 없으면 추가해줌.
+                    self.check_neighbors(current_cell)
+                    self.last_selected_cell = current_cell
+            else: # object -> type: object인 것들은 canvas에 그릴 때, CanvasObject 객체로 그려줘서 위치를 이동시킬 수 있음.
+                CanvasObject(
+                    pos = mouse_pos(),
+                    frames = self.animations[self.selection_index]['frames'],
+                    tile_id = self.selection_index,
+                    origin = self.origin,
+                    group = self.canvas_objects
+                )
+
 
     def canvas_remove(self):
         if mouse_btns()[2] and not self.menu.rect.collidepoint(mouse_pos()):
@@ -174,6 +213,20 @@ class Editor:
                 if self.canvas_data[current_cell].is_empty:
                     del self.canvas_data[current_cell]
                 self.check_neighbors(current_cell)
+    
+    def object_drag(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and mouse_btns()[0]:
+            for sprite in self.canvas_objects:
+                if sprite.rect.collidepoint(mouse_pos()):
+                    sprite.start_drag()
+                    self.object_drag_active = True
+
+        if event.type == pygame.MOUSEBUTTONUP and self.object_drag_active:
+            for sprite in self.canvas_objects:
+                if sprite.selected:
+                    sprite.drag_end(self.origin) 
+                    self.object_drag_active = False
+
     # drawing
     def draw_tile_lines(self): # grid tile lines
         cols = WINDOW_WIDTH//TILE_SIZE # // : 몫만 남기는 operator
@@ -230,6 +283,8 @@ class Editor:
                 surf = frames[index]
                 rect = surf.get_rect(midbottom = (pos.x + TILE_SIZE//2, pos.y + TILE_SIZE))
                 self.screen.blit(surf, rect)
+        self.canvas_objects.draw(self.screen) # Group에 속한 sprite는 image, rect를 가지고 있어서 바로 그려짐
+        
 
     # update
     def run(self,dt):
@@ -237,6 +292,7 @@ class Editor:
 
         # updating
         self.animation_update(dt)
+        self.canvas_objects.update(dt) # sprite.Group에서 함수 실행해주면 Group안에 있는 각각의 sprite에 대하여 동일한 함수 실행
 
         # drawing
         self.screen.fill("gray")
@@ -288,3 +344,46 @@ class CanvasTile:
     def check_contents(self):
         if not self.has_terrain and not self.has_water and not self.coin and not self.enemy:
             self.is_empty = True
+
+class CanvasObject(pygame.sprite.Sprite):
+    def __init__(self, pos, frames, tile_id, origin, group): # tile_id : 0,1
+        super().__init__(group)
+        self.tile_id = tile_id
+
+        # animation
+        self.frames = frames
+        self.frame_index = 0
+        
+        self.image = self.frames[self.frame_index]
+        self.rect = self.image.get_rect(center = pos)
+
+        # movement
+        self.distance_to_origin = vector(self.rect.topleft) - origin
+        self.selected = False
+        self.mouse_offset = vector()
+
+    def start_drag(self):
+        self.selected = True
+        self.mouse_offset = vector(mouse_pos()) - vector(self.rect.topleft)
+
+    def drag(self):
+        if self.selected:
+            self.rect.topleft = mouse_pos() - self.mouse_offset
+
+    def drag_end(self, origin):
+        self.selected = False
+        self.distance_to_origin = vector(self.rect.topleft) - origin # 캐릭터 움직이고, L_ctrl로 origin움직이고, pressed[1]로 움직이면 에러 발생 -> 순간이동함.
+
+
+    def animate(self, dt):
+        self.frame_index += ANIMATION_SPEED * dt
+        self.frame_index = 0 if self.frame_index >= len(self.frames) else self.frame_index
+        self.image = self.frames[int(self.frame_index)]
+        self.rect = self.image.get_rect(midbottom = self.rect.midbottom)
+
+    def pan_pos(self, origin):
+        self.rect.topleft = origin + self.distance_to_origin
+
+    def update(self, dt):
+        self.animate(dt)
+        self.drag()
