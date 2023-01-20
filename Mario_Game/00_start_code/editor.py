@@ -119,7 +119,10 @@ class Editor:
                     'frames' : graphics, # 사진들 총 집함. list형식
                     'length' : len(graphics)
                 }
-        print(self.animations)
+        
+        # preview
+        self.preview_surfs = {key : load(value['preview']) for key, value in EDITOR_DATA.items() if value['preview']}
+
 
     def animation_update(self, dt):
         for value in self.animations.values():
@@ -302,6 +305,41 @@ class Editor:
                 self.screen.blit(surf, rect)
         self.canvas_objects.draw(self.screen) # Group에 속한 sprite는 image, rect를 가지고 있어서 바로 그려짐
         
+    def preview(self):
+        selected_object = self.mouse_on_object() # 마우스가 object위에 있을 때.
+        if not self.menu.rect.collidepoint(mouse_pos()): # mouse가 menu에 있지 않으면서
+            if selected_object:
+                rect = selected_object.rect.inflate(10,10) # 10, 10만큼 늘림. New Rect return.
+                color = 'black'
+                width = 3
+                size = 15
+                
+                # topleft
+                pygame.draw.lines(self.screen, color, False, [(rect.left, rect.top+size), rect.topleft, (rect.left + size,rect.top)], width)
+                # topright
+                pygame.draw.lines(self.screen, color, False, [(rect.right-size, rect.top), rect.topright, (rect.right ,rect.top+size)], width)
+                # bottomleft
+                pygame.draw.lines(self.screen, color, False, [(rect.left, rect.bottom-size), rect.bottomleft, (rect.left + size,rect.bottom)], width)
+                # bottomright
+                pygame.draw.lines(self.screen, color, False, [(rect.right-size, rect.bottom), rect.bottomright, (rect.right,rect.bottom-size)], width)
+                # draws lines around objects when hovered over
+            else:
+                type_dict = {key: value['type'] for key, value in EDITOR_DATA.items()}
+                surf = self.preview_surfs[self.selection_index].copy()
+                surf.set_alpha(200)
+
+                # preview of the tiles 
+                if type_dict[self.selection_index] == 'tile':
+                    current_cell = self.get_current_cell()
+                    rect = surf.get_rect(topleft = self.origin + vector(current_cell) * TILE_SIZE)
+
+                # preview of the object
+                else:
+                    rect = surf.get_rect(center = mouse_pos())
+                    
+                self.screen.blit(surf, rect)
+
+        
 
     # update
     def run(self,dt):
@@ -317,6 +355,7 @@ class Editor:
         self.draw_tile_lines()
         self.draw_level()
         pygame.draw.circle(self.screen,'red', self.origin,10)
+        self.preview()
         self.menu.display(self.selection_index)
         
 class CanvasTile:
