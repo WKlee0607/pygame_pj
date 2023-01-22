@@ -48,6 +48,8 @@ class Editor:
 
         # objects
         self.canvas_objects = pygame.sprite.Group()
+        self.foreground = pygame.sprite.Group()
+        self.background = pygame.sprite.Group()
         self.object_drag_active = False
         self.object_timer = Timer(400)
 
@@ -57,7 +59,7 @@ class Editor:
             frames = self.animations[0]['frames'], 
             tile_id = 0, 
             origin = self.origin, 
-            group = self.canvas_objects
+            group = [self.canvas_objects, self.foreground]
         )
 
         # sky
@@ -66,8 +68,8 @@ class Editor:
             pos = (WINDOW_WIDTH/2, WINDOW_HEIGHT/2),
             frames = [self.sky_handle_surf],
             tile_id= 1,
-            origin=self.origin,
-            group=self.canvas_objects
+            origin= self.origin,
+            group= [self.canvas_objects, self.background]
         )
 
     # support
@@ -275,12 +277,13 @@ class Editor:
                     self.last_selected_cell = current_cell
             else: # object -> type: object인 것들은 canvas에 그릴 때, CanvasObject 객체로 그려줘서 위치를 이동시킬 수 있음.
                 if not self.object_timer.active:
+                    groups = [self.canvas_objects, self.background] if EDITOR_DATA[self.selection_index]['style'] == 'palm_bg' else [self.canvas_objects, self.foreground]
                     CanvasObject(
                         pos = mouse_pos(),
                         frames = self.animations[self.selection_index]['frames'],
                         tile_id = self.selection_index,
                         origin = self.origin,
-                        group = self.canvas_objects
+                        group = groups
                     )
                     self.object_timer.activate() # 0.4초 딜레이
 
@@ -341,6 +344,7 @@ class Editor:
         self.screen.blit(self.support_line_surf,(0,0))
 
     def draw_level(self):
+        self.background.draw(self.screen)
         for cell_pos, tile in self.canvas_data.items():
             pos = self.origin + vector(cell_pos) * TILE_SIZE
             
@@ -374,7 +378,7 @@ class Editor:
                 surf = frames[index]
                 rect = surf.get_rect(midbottom = (pos.x + TILE_SIZE//2, pos.y + TILE_SIZE))
                 self.screen.blit(surf, rect)
-        self.canvas_objects.draw(self.screen) # Group에 속한 sprite는 image, rect를 가지고 있어서 바로 그려짐
+        self.foreground.draw(self.screen) # Group에 속한 sprite는 image, rect를 가지고 있어서 바로 그려짐
         
     def preview(self):
         selected_object = self.mouse_on_object() # 마우스가 object위에 있을 때.
