@@ -13,10 +13,11 @@ from timer import Timer
 from random import choice, randint
 
 class Editor:
-    def __init__(self, land_tiles):
+    def __init__(self, land_tiles, switch): # switch : fn
         # main set_up
         self.screen = pygame.display.get_surface() # Get a reference to the currently set display surface(현재 설정된 화면 표시면에 대한 참조 가져오기)
         self.canvas_data = {}
+        self.switch = switch
 
         # imports 
         self.land_tiles = land_tiles # dict or list형식
@@ -211,7 +212,7 @@ class Editor:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN: # K_RETURN : 엔터키
-                print(self.create_grid())
+                self.switch(self.create_grid()) # 엔터키 누르면 mode바뀜.
             
             self.pan_input(event)
             self.selection_hotkeys(event)
