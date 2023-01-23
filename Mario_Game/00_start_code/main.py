@@ -30,6 +30,14 @@ class Main:
 
     def imports(self):
         self.land_tiles = import_folder_dict(os.path.join(GRAPHICS_PATH,"terrain/land")) # surface list return받음 -> 모든 land이미지에 대한 img_surf
+        self.water_bottom = load(os.path.join(GRAPHICS_PATH,"terrain/water/water_bottom.png")).convert_alpha()
+        self.water_top_animation = import_folder(os.path.join(GRAPHICS_PATH,"terrain/water/animation"))
+
+        # coins
+        self.gold = import_folder(os.path.join(GRAPHICS_PATH,"items/gold"))
+        self.silver = import_folder(os.path.join(GRAPHICS_PATH,"items/silver"))
+        self.diamond =  import_folder(os.path.join(GRAPHICS_PATH,"items/diamond"))
+        self.particle = import_folder(os.path.join(GRAPHICS_PATH,"items/particle"))
 
     def toggle(self):
         self.editor_active = not self.editor_active
@@ -39,6 +47,12 @@ class Main:
         if grid:
             self.level = Level(grid, self.switch, {
                 'land': self.land_tiles,
+                'water bottom' : self.water_bottom,
+                'water top' : self.water_top_animation,
+                'gold' : self.gold,
+                'silver' : self.silver,
+                'diamond' : self.diamond,
+                'particle' : self.particle,
             })
 
     def run(self):
