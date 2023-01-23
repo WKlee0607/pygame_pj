@@ -166,7 +166,7 @@ class Editor:
         layers = {
             'water': {},
             'bg palms' : {},
-            'terrain' : {},
+            'terrain' : {}, # {(pos) : 'data'}
             'enemies' : {},
             'coins' : {},
             'fg objects' : {},
