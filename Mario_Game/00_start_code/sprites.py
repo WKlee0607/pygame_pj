@@ -2,6 +2,7 @@ import pygame
 from pygame.math import Vector2 as vector
 
 from settings import *
+from timer import Timer
 
 class Generic(pygame.sprite.Sprite):
     def __init__(self, pos, surf, group, z = LEVEL_LAYERS['main']):
@@ -63,7 +64,7 @@ class Tooth(Generic):
         self.rect.bottom = self.rect.top + TILE_SIZE
         
 class Shell(Generic):
-    def __init__(self, orientation, assets, pos, group):
+    def __init__(self, orientation, assets, pos, group, pearl_surf, damage_sprites):
         self.orientation = orientation
         self.animation_frame = assets.copy()
         if orientation == 'right':
@@ -75,6 +76,63 @@ class Shell(Generic):
         self.status = 'idle'
         super().__init__(pos, self.animation_frame[self.status][self.frame_index], group)
         self.rect.bottom = self.rect.top + TILE_SIZE
+
+        # pearl
+        self.pearl_surf = pearl_surf
+        self.has_shot = False
+        self.attack_cooldown = Timer(2000)
+        self.damage_sprites = damage_sprites
+
+    def animate(self, dt):
+        current_animation = self.animation_frame[self.status]
+        self.frame_index += ANIMATION_SPEED * dt
+        if self.frame_index >= len(current_animation):
+            self.frame_index = 0
+            if self.has_shot:
+                self.attack_cooldown.activate()
+                self.has_shot = False
+        self.image = current_animation[int(self.frame_index)]
+
+        if int(self.frame_index) == 2 and self.status == 'attack' and not self.has_shot:
+            pearl_vector = vector(-1,0) if self.orientation == 'left' else vector(1,0)
+            offset = (pearl_vector * 50 + vector(0, -10)) if self.orientation == 'left' else (pearl_vector * 20 + vector(0, -10))
+            # create a pearl
+            Pearl(self.rect.center + offset, pearl_vector, self.pearl_surf, [self.groups()[0] ,self.damage_sprites]) # self.groups : 이 객체가 속한 그룹. 0번은 self.all_sprites그룹임.
+            self.has_shot = True
+        
+    def get_status(self):
+        if vector(self.player.rect.center).distance_to(vector(self.rect.center)) < 500 and not self.attack_cooldown.active:
+            self.status = 'attack'
+        else:
+            self.status = 'idle'
+
+    def update(self, dt):
+        self.get_status()
+        self.animate(dt)
+        self.attack_cooldown.update()
+
+class Pearl(Generic):
+    def __init__(self, pos, direction, surf, group):
+        super().__init__(pos, surf, group)
+
+        # movement
+        self.pos = vector(self.rect.topleft)
+        self.direction = direction
+        self.speed = 150
+
+        # self destruct
+        self.timer = Timer(6000)
+        self.timer.activate()
+    
+    def update(self, dt):
+        # movement
+        self.pos.x += self.direction.x * self.speed * dt
+        self.rect.x = round(self.pos.x)
+
+        # timer
+        self.timer.update()
+        if not self.timer.active:
+            self.kill()
 
 class Player(Generic):
     def __init__(self, pos, assets, group, collision_sprites):

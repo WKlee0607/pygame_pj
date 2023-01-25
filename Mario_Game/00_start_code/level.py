@@ -16,6 +16,7 @@ class Level:
         self.coin_sprites = pygame.sprite.Group()
         self.damage_sprites = pygame.sprite.Group()
         self.collision_sprites = pygame.sprite.Group()
+        self.shell_sprites = pygame.sprite.Group()
 
         self.build_level(grid, asset_dict)
 
@@ -45,8 +46,24 @@ class Level:
                     # enemies
                     case 7 : Spikes(asset_dict['spikes'], pos, [self.all_sprites, self.damage_sprites]) # spikes
                     case 8 : Tooth(asset_dict['tooth'], pos, [self.all_sprites, self.damage_sprites])
-                    case 9 : Shell('left', asset_dict['shell'], pos, [self.all_sprites, self.collision_sprites]) # shell pointing left
-                    case 10 : Shell('right', asset_dict['shell'], pos, [self.all_sprites, self.collision_sprites]) # shell pointing right
+                    case 9 : 
+                        Shell(
+                            orientation = 'left', 
+                            assets = asset_dict['shell'], 
+                            pos = pos, 
+                            group = [self.all_sprites, self.collision_sprites, self.shell_sprites],
+                            pearl_surf = asset_dict['pearl'],
+                            damage_sprites = self.damage_sprites,
+                        ) # shell pointing left
+                    case 10 : 
+                        Shell(
+                            orientation = 'right', 
+                            assets = asset_dict['shell'], 
+                            pos = pos, 
+                            group = [self.all_sprites, self.collision_sprites, self.shell_sprites],
+                            pearl_surf = asset_dict['pearl'],
+                            damage_sprites = self.damage_sprites,
+                        ) # shell pointing right
 
                     # palm trees
                     case 11 : 
@@ -66,6 +83,9 @@ class Level:
                     case 16 : Animated(asset_dict['palms']['large_bg'], pos, self.all_sprites, LEVEL_LAYERS['bg'])
                     case 17 : Animated(asset_dict['palms']['left_bg'], pos, self.all_sprites, LEVEL_LAYERS['bg'])
                     case 18 : Animated(asset_dict['palms']['right_bg'], pos, self.all_sprites, LEVEL_LAYERS['bg'])
+        
+        for sprites in self.shell_sprites:
+            sprites.player = self.player # sprites.player is on pygame.sprite.Sprite
 
     def get_coins(self):
         collied_coins = pygame.sprite.spritecollide(self.player, self.coin_sprites, True) # return sprites list
