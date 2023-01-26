@@ -237,7 +237,7 @@ class Player(Generic):
     def damage(self):
         if not self.invul_timer.active:
             self.invul_timer.activate()
-            self.direction.y -= -1.5
+            self.direction.y -= 1.5
 
     def get_status(self):
         if self.direction.y < 0:
@@ -273,6 +273,10 @@ class Player(Generic):
         if keys[pygame.K_SPACE] and self.on_floor:
             self.direction.y = -2
             self.jump_sound.play()
+
+        # when damaged. wkwk
+        if self.invul_timer.active:
+            self.direction.x = -0.7 if self.direction.x > 0 else 0.7
 
     def move(self, dt): 
         # horizonal movement
