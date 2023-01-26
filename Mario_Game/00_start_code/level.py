@@ -95,6 +95,11 @@ class Level:
             if sprite.coin_type == 'gold':
                 pass
 
+    def get_damage(self):
+        collision_sprites = pygame.sprite.spritecollide(self.player, self.damage_sprites, False, pygame.sprite.collide_mask)
+        if collision_sprites:
+            self.player.damage()
+
     def event_loop(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -108,6 +113,7 @@ class Level:
         self.event_loop()
         self.screen.fill(SKY_COLOR)
         self.get_coins()
+        self.get_damage()
 
         self.all_sprites.update(dt)
         self.all_sprites.custom_draw(self.player)
