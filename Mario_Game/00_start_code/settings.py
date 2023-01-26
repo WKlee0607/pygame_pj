@@ -1,6 +1,7 @@
 import os
 GRAPHICS_MENU_PATH = os.path.join(os.path.abspath(path="graphics"),'menu')
 GRAPHICS_PATH = os.path.abspath(path="graphics")
+AUDIO_PATH = os.path.abspath(path="audio")
 
 # general setup
 TILE_SIZE = 64

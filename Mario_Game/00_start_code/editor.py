@@ -73,6 +73,11 @@ class Editor:
             group= [self.canvas_objects, self.background]
         )
 
+        # music
+        self.editor_music = pygame.mixer.Sound(os.path.join(AUDIO_PATH, 'Explorer.ogg'))
+        self.editor_music.set_volume(0.4)
+        self.editor_music.play(loops = -1) # 무한 반복    
+
     # support
     def get_current_cell(self, obj = None):
         distance_to_origin = vector(mouse_pos()) - self.origin if not obj else vector(obj.distance_to_origin) - self.origin
@@ -117,7 +122,6 @@ class Editor:
                         if self.canvas_data[neighbor_cell].has_terrain: # 그 주위 블럭이 has_terrain일 경우.
                             self.canvas_data[cell].terrain_neighbors.append(name) # 어차피 그림은 terrain_neighbors를 참조하여 draw level에서 그려짐. 추가만 하면됨.
                             # neighbors에도 terrain_neighbors 리스트 추가해야 되는 거 아닌가? -> 아, 어차피 neighbors 바로 옆에 블럭 그리면 그 블럭도 이 함수에 의해 업데이트 됨.
-
     def imprt(self): 
         self.water_bottom = load(os.path.join(GRAPHICS_PATH, 'terrain/water/water_bottom.png')).convert_alpha()
         self.sky_handle_surf = load(os.path.join(GRAPHICS_PATH, 'cursors/handle.png')).convert_alpha()
@@ -135,7 +139,6 @@ class Editor:
         
         # preview
         self.preview_surfs = {key : load(value['preview']) for key, value in EDITOR_DATA.items() if value['preview']}
-
 
     def animation_update(self, dt):
         for value in self.animations.values():
@@ -213,6 +216,7 @@ class Editor:
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN: # K_RETURN : 엔터키
                 self.switch(self.create_grid()) # 엔터키 누르면 mode바뀜.
+                self.editor_music.stop()
             
             self.pan_input(event)
             self.selection_hotkeys(event)
@@ -234,13 +238,6 @@ class Editor:
 
         if not mouse_btns()[1]:
             self.pan_active = False
-            
-        # panning update
-        if self.pan_active:
-            self.origin = vector(mouse_pos()) - self.pan_offset # 현재 마우스 위치에서, MouseBtnDown했을 때의 마우스와 pan의 거리(정확히는 벡터 차이만큼) 차이만큼을 유지하며 pan이 이동함. -> pan이 한 번에 점프하는 걸 방지
-
-            for sprite in self.canvas_objects:
-                sprite.pan_pos(self.origin)
 
         # mouse_wheel
         if event.type == pygame.MOUSEWHEEL:
@@ -249,6 +246,15 @@ class Editor:
                 self.origin.y -= event.y * 50
             else:
                 self.origin.x -= event.y * 50
+            for sprite in self.canvas_objects:
+                sprite.pan_pos(self.origin)
+
+        # panning update
+        if self.pan_active:
+            self.origin = vector(mouse_pos()) - self.pan_offset # 현재 마우스 위치에서, MouseBtnDown했을 때의 마우스와 pan의 거리(정확히는 벡터 차이만큼) 차이만큼을 유지하며 pan이 이동함. -> pan이 한 번에 점프하는 걸 방지
+
+            for sprite in self.canvas_objects:
+                sprite.pan_pos(self.origin)
 
     def selection_hotkeys(self,event):
         if event.type == pygame.KEYDOWN:
@@ -260,7 +266,8 @@ class Editor:
 
     def menu_click(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and self.menu.rect.collidepoint(mouse_pos()):
-            self.selection_index = self.menu.click(mouse_pos(), mouse_btns()) # 위치랑 누른 유형 넘겨줌.
+            new_index = self.menu.click(mouse_pos(), mouse_btns()) # 위치랑 누른 유형 넘겨줌.
+            self.selection_index = new_index if new_index else self.selection_index
 
     def canvas_add(self):
         # pressed Left
@@ -287,7 +294,6 @@ class Editor:
                         group = groups
                     )
                     self.object_timer.activate() # 0.4초 딜레이
-
 
     def canvas_remove(self):
         if mouse_btns()[2] and not self.menu.rect.collidepoint(mouse_pos()):
