@@ -4,6 +4,8 @@ from pygame.math import Vector2 as vector
 from settings import *
 from timer import Timer
 
+from random import choice
+
 class Generic(pygame.sprite.Sprite):
     def __init__(self, pos, surf, group, z = LEVEL_LAYERS['main']):
         super().__init__(group)
@@ -55,13 +57,62 @@ class Spikes(Generic):
         super().__init__(pos, surf, group)
 
 class Tooth(Generic):
-    def __init__(self, assets, pos, group):
+    def __init__(self, assets, pos, group, collision_sprites):
+
+        # general setup
         self.animation_frame = assets # {'idle' : [assets], 'left' : [surfs], ..}
         self.frame_index = 0
         self.orientation = 'right'
         surf = self.animation_frame[f'run_{self.orientation}'][self.frame_index]
         super().__init__(pos, surf, group)
         self.rect.bottom = self.rect.top + TILE_SIZE
+
+        # movement
+        self.direction = vector(choice((1,-1)),0)
+        self.orientation = 'left' if self.direction.x < 0 else self.orientation
+        self.pos = vector(self.rect.topleft)
+        self.speed = 120
+        self.collision_sprites = collision_sprites
+
+        # detroy tooth at the beggining if he is not on a floor
+        if not [sprite for sprite in collision_sprites if sprite.rect.collidepoint(self.rect.midbottom + vector(0,10))]:
+            self.kill()
+
+    def animate(self, dt):
+        current_animation = self.animation_frame[f'run_{self.orientation}']
+        self.frame_index += ANIMATION_SPEED * dt
+        self.frame_index = 0 if self.frame_index >= len(current_animation) else self.frame_index
+        self.image = current_animation[int(self.frame_index)]
+
+    def move(self, dt):
+        right_gap = self.rect.bottomright + vector(1,1)
+        right_block = self.rect.midright + vector(1,0)
+        left_gap = self.rect.bottomleft + vector(-1,1)
+        left_block = self.rect.midright + vector(-1,0)
+
+        if self.direction.x > 0: # moving right
+            # 1. no floor collision
+            floor_sprites = [sprite for sprite in self.collision_sprites if sprite.rect.collidepoint(right_gap)]
+            # 2. wall collision
+            wall_sprites = [sprite for sprite in self.collision_sprites if sprite.rect.collidepoint(right_block)]
+            if wall_sprites or not floor_sprites:
+                self.direction.x *= -1
+                self.orientation = 'left'
+
+        if self.direction.x < 0: # moving right
+            if [sprite for sprite in self.collision_sprites if sprite.rect.collidepoint(left_block)] \
+            or not [sprite for sprite in self.collision_sprites if sprite.rect.collidepoint(left_gap)]:
+                self.direction.x *= -1
+                self.orientation = 'right'
+            
+            
+
+        self.pos.x += self.direction.x * self.speed * dt
+        self.rect.x = round(self.pos.x)
+
+    def update(self, dt):
+        self.animate(dt)
+        self.move(dt)
         
 class Shell(Generic):
     def __init__(self, orientation, assets, pos, group, pearl_surf, damage_sprites):
